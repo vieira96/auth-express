@@ -34,11 +34,14 @@ set +a
 log "Construindo e iniciando os containers de desenvolvimento"
 docker compose up -d --build
 
+log "Aplicando migrations pendentes do Prisma"
+docker compose exec -T app npx prisma migrate deploy
+
 log "Status dos containers"
 docker compose ps
 
 log "Ambiente pronto"
 printf '%s\n' \
   "API:        http://localhost:${APP_PORT:-3000}" \
-  "Healthcheck: http://localhost:${APP_PORT:-3000}/health" \
+  "Auth:       http://localhost:${APP_PORT:-3000}/auth" \
   "PostgreSQL:  localhost:${POSTGRES_PORT:-5432}"
