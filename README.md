@@ -9,6 +9,7 @@ O projeto foi estruturado para praticar fundamentos de backend que aparecem em a
 - API em TypeScript com organização modular por responsabilidade.
 - Senhas armazenadas somente como hash com bcrypt.
 - JWT emitido apenas no login.
+- Rota de usuários protegida por Bearer token.
 - Validação de payloads com Zod e respostas de erro consistentes.
 - PostgreSQL versionado por migrations do Prisma.
 - Ambiente de desenvolvimento com Docker e hot reload.
@@ -22,6 +23,7 @@ O projeto foi estruturado para praticar fundamentos de backend que aparecem em a
 | ORM e migrations | Prisma |
 | Validação | Zod |
 | Autenticação | bcryptjs e JSON Web Token |
+| Testes | Vitest, Supertest e Testcontainers |
 | Ambiente local | Docker Compose |
 
 ## Como iniciar
@@ -78,6 +80,7 @@ JWT_SECRET=troque-por-um-segredo-local-longo
 | --- | --- | --- |
 | `POST` | `/auth/register` | Cria um usuário sem emitir token. |
 | `POST` | `/auth/login` | Valida credenciais e retorna um JWT. |
+| `GET` | `/users` | Lista usuários autenticados. Requer Bearer token. |
 
 ### `POST /auth/register`
 
@@ -125,6 +128,31 @@ Resposta `200`:
 ```
 
 Erros de validação retornam `400` com o campo e uma mensagem objetiva. E-mail já utilizado retorna `409`; credenciais incorretas no login retornam `401`.
+
+### `GET /users`
+
+Lista os usuários com dados públicos. Envie o token recebido no login:
+
+```http
+Authorization: Bearer seu_token_aqui
+```
+
+Resposta `200`:
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "ana@exemplo.com",
+      "createdAt": "2026-09-07T20:41:47.564Z",
+      "updatedAt": "2026-09-07T20:41:47.564Z"
+    }
+  ]
+}
+```
+
+Sem token ou com token inválido, a rota retorna `401`.
 
 ## Prisma e migrations
 
@@ -181,7 +209,12 @@ A suíte usa Vitest, Supertest e Testcontainers.
 - **Supertest** envia requisições HTTP para a aplicação Express sem iniciar um servidor em uma porta.
 - **Testcontainers** cria um PostgreSQL temporário em Docker para os testes de integração.
 
-O teste de cadastro cobre o fluxo completo de `POST /auth/register`: rota, controller, validação, service, Prisma e PostgreSQL. Ele valida a criação do usuário, a resposta `201`, a ausência de token no cadastro, o hash da senha e o bloqueio de e-mail duplicado (`409`).
+Os testes de integração cobrem rotas, controllers, services, Prisma e PostgreSQL:
+
+- cadastro com sucesso e bloqueio de e-mail duplicado (`409`);
+- login com credenciais válidas e inválidas (`401`);
+- listagem de usuários com token válido;
+- acesso a `/users` sem token ou com token inválido (`401`).
 
 Cada execução cria um banco vazio, aplica as migrations do Prisma e aponta a API para esse banco por meio de `DATABASE_URL`. Depois de cada cenário, os usuários são removidos. Ao final, a conexão do Prisma e o container temporário são encerrados.
 
@@ -193,10 +226,12 @@ Cada execução cria um banco vazio, aplica as migrations do Prisma e aponta a A
 npm test
 ```
 
-Para rodar apenas o teste de cadastro:
+Para rodar apenas um módulo:
 
 ```bash
 npm test -- tests/auth/register.spec.ts
+npm test -- tests/auth/login.spec.ts
+npm test -- tests/user/user.spec.ts
 ```
 
 Durante o desenvolvimento:
@@ -209,4 +244,4 @@ npm run test:watch
 
 ## Próximo passo
 
-Adicionar os cenários de login em `tests/auth/login.spec.ts`.
+Adicionar paginação à listagem de usuários e cobrir esse comportamento com testes.

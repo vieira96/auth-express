@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "df1a99d3-67ae-4c01-8ac8-3411c26023f1",
     "name": "Auth API",
-    "description": "Rotas de autenticacao da API Express. Altere testEmail se o cadastro retornar 409 por e-mail ja existente. O JWT e retornado somente no login.",
+    "description": "Rotas de autenticacao e usuarios da API Express. Execute Cadastro, Login e depois Listar usuarios. O JWT e retornado somente no login.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -96,6 +96,44 @@
                   "if (body.token) {",
                   "  pm.collectionVariables.set('accessToken', body.token);",
                   "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users",
+            "description": "Lista usuarios autenticados. Execute Login antes para preencher accessToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Nao retorna hash de senha', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.users).to.be.an('array');",
+                  "  body.users.forEach(function (user) {",
+                  "    pm.expect(user).not.to.have.property('passwordHash');",
+                  "  });",
+                  "});"
                 ]
               }
             }
