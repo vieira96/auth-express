@@ -68,10 +68,11 @@ describe('POST /auth/login', () => {
   it('recusa uma senha invalida', async () => {
     const password = 'Senha123!';
     const wrongPassword = 'SenhaErrada123!';
+    const email = 'email@exemplo.com';
 
     const user = await prisma.user.create({
       data: {
-        email: 'ana@exemplo.com',
+        email: email,
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
@@ -90,7 +91,7 @@ describe('POST /auth/login', () => {
   it('recusa um email invalido', async () => {
     const password = 'Senha123!';
     const email = 'email@exemplo.com';
-    const wrongEmail = 'nao@exemplo.com';
+    const wrongEmail = 'emailerrado@exemplo.com';
 
     await prisma.user.create({
       data: {
@@ -113,8 +114,8 @@ describe('POST /auth/login', () => {
   it('recusa um email e senha invalidos', async () => {
     const password = 'Senha123!';
     const wrongPassword = 'SenhaErrada123!';
-    const email = 'nao@exemplo.com';
-    const wrongEmail = 'nao@exemplo.com';
+    const email = 'email@exemplo.com';
+    const wrongEmail = 'emailerrado@exemplo.com';
 
     await prisma.user.create({
       data: {
