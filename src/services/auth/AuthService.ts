@@ -31,7 +31,7 @@ class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      throw new AppError(401, 'E-mail ou senha invalidos.');
+      throw new AppError(401, 'E-mail e/ou senha invalidos.');
     }
 
     return this.createAuthResponse(user);
