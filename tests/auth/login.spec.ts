@@ -1,52 +1,37 @@
-import type { Express } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import type { PrismaClient } from '../../src/generated/prisma/client.js';
-import { startTestDatabase } from '../support/testDatabase.js';
+import { createTestApp, type TestApp } from '../support/setupTestApp.js';
 
 const jwtSecret = 'test-secret-for-auth-api';
 
 describe('POST /auth/login', () => {
-  let app: Express;
-  let prisma: PrismaClient;
-  let stopDatabase: () => Promise<void>;
+  let testApp: TestApp;
 
   beforeAll(async () => {
-    const database = await startTestDatabase();
-    process.env.DATABASE_URL = database.databaseUrl;
-    process.env.JWT_SECRET = jwtSecret;
-
-    stopDatabase = async (): Promise<void> => {
-      await database.container.stop();
-    };
-
-    // A aplicação só é importada após apontar o Prisma para o banco de teste.
-    ({ app } = await import('../../src/app.js'));
-    ({ prisma } = await import('../../src/config/prisma.js'));
+    testApp = await createTestApp({ jwtSecret });
   });
 
   afterEach(async () => {
-    await prisma.user.deleteMany();
+    await testApp.clearDatabase();
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
-    await stopDatabase();
+    await testApp.close();
   });
 
   it('autentica credenciais validas e retorna um JWT', async () => {
     const password = 'Senha123!';
-    const user = await prisma.user.create({
+    const user = await testApp.prisma.user.create({
       data: {
         email: 'ana@exemplo.com',
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
 
-    const response = await request(app).post('/auth/login').send({
+    const response = await request(testApp.app).post('/auth/login').send({
       email: user.email,
       password,
     });
@@ -70,14 +55,14 @@ describe('POST /auth/login', () => {
     const wrongPassword = 'SenhaErrada123!';
     const email = 'email@exemplo.com';
 
-    const user = await prisma.user.create({
+    const user = await testApp.prisma.user.create({
       data: {
         email: email,
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
 
-    const response = await request(app).post('/auth/login').send({
+    const response = await request(testApp.app).post('/auth/login').send({
       email: user.email,
       password: wrongPassword,
     });
@@ -93,14 +78,14 @@ describe('POST /auth/login', () => {
     const email = 'email@exemplo.com';
     const wrongEmail = 'emailerrado@exemplo.com';
 
-    await prisma.user.create({
+    await testApp.prisma.user.create({
       data: {
         email: email,
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
 
-    const response = await request(app).post('/auth/login').send({
+    const response = await request(testApp.app).post('/auth/login').send({
       email: wrongEmail,
       password: password,
     });
@@ -117,14 +102,14 @@ describe('POST /auth/login', () => {
     const email = 'email@exemplo.com';
     const wrongEmail = 'emailerrado@exemplo.com';
 
-    await prisma.user.create({
+    await testApp.prisma.user.create({
       data: {
         email: email,
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
 
-    const response = await request(app).post('/auth/login').send({
+    const response = await request(testApp.app).post('/auth/login').send({
       email: wrongEmail,
       password: wrongPassword,
     });

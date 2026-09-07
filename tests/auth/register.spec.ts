@@ -1,36 +1,22 @@
-import type { Express } from 'express';
 import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import type { PrismaClient } from '../../src/generated/prisma/client.js';
-import { startTestDatabase } from '../support/testDatabase.js';
+import { createTestApp, type TestApp } from '../support/setupTestApp.js';
 
 describe('POST /auth/register', () => {
-  let app: Express;
-  let prisma: PrismaClient;
-  let stopDatabase: () => Promise<void>;
+  let testApp: TestApp;
 
   beforeAll(async () => {
-    const database = await startTestDatabase();
-    process.env.DATABASE_URL = database.databaseUrl;
-
-    stopDatabase = async (): Promise<void> => {
-      await database.container.stop();
-    };
-
-    // A aplicação só é importada após apontar o Prisma para o banco de teste.
-    ({ app } = await import('../../src/app.js'));
-    ({ prisma } = await import('../../src/config/prisma.js'));
+    testApp = await createTestApp();
   });
 
   afterEach(async () => {
-    await prisma.user.deleteMany();
+    await testApp.clearDatabase();
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
-    await stopDatabase();
+    await testApp.close();
   });
 
   it('cria um usuario, retorna dados publicos e salva a senha com hash', async () => {
@@ -39,7 +25,7 @@ describe('POST /auth/register', () => {
       password: 'Senha123!',
     };
 
-    const response = await request(app).post('/auth/register').send(payload);
+    const response = await request(testApp.app).post('/auth/register').send(payload);
 
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
@@ -50,7 +36,7 @@ describe('POST /auth/register', () => {
     });
     expect(response.body).not.toHaveProperty('token');
 
-    const user = await prisma.user.findUnique({
+    const user = await testApp.prisma.user.findUnique({
       where: { email: payload.email },
     });
 
@@ -60,14 +46,14 @@ describe('POST /auth/register', () => {
   });
 
   it('recusa cadastro com e-mail ja existente', async () => {
-    const existingUser = await prisma.user.create({
+    const existingUser = await testApp.prisma.user.create({
       data: {
         email: 'testeexistente@teste.com',
         passwordHash: await bcrypt.hash('Senha123!', 12),
       },
     });
 
-    const response = await request(app).post('/auth/register').send({
+    const response = await request(testApp.app).post('/auth/register').send({
       email: existingUser.email,
       password: 'OutraSenha123!',
     });
