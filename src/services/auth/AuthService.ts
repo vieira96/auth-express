@@ -9,6 +9,8 @@ import type {
   RegisterResponse,
 } from '@/types/auth/AuthTypes.js';
 
+import { UserType } from '@/types/user/UserType.js';
+
 class AuthService {
   async register({ email, password }: AuthCredentials): Promise<RegisterResponse> {
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -52,7 +54,7 @@ class AuthService {
     };
   }
 
-  private toAuthUser(user: { id: string; email: string }) {
+  private toAuthUser(user: UserType) {
     return { id: user.id, email: user.email };
   }
 }

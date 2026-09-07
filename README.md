@@ -173,11 +173,40 @@ postman/postman_collection.json
 
 Importe esse arquivo no Postman. A collection contém variáveis para URL, e-mail, senha e token de acesso.
 
+## Testes
+
+A suíte usa Vitest, Supertest e Testcontainers.
+
+- **Vitest** executa os testes em TypeScript.
+- **Supertest** envia requisições HTTP para a aplicação Express sem iniciar um servidor em uma porta.
+- **Testcontainers** cria um PostgreSQL temporário em Docker para os testes de integração.
+
+O teste de cadastro cobre o fluxo completo de `POST /auth/register`: rota, controller, validação, service, Prisma e PostgreSQL. Ele valida a criação do usuário, a resposta `201`, a ausência de token no cadastro, o hash da senha e o bloqueio de e-mail duplicado (`409`).
+
+Cada execução cria um banco vazio, aplica as migrations do Prisma e aponta a API para esse banco por meio de `DATABASE_URL`. Depois de cada cenário, os usuários são removidos. Ao final, a conexão do Prisma e o container temporário são encerrados.
+
+### Como executar
+
+É necessário ter Node.js, Docker e Docker Compose instalados. Execute no terminal da máquina, na raiz do projeto e fora do container da API:
+
+```bash
+npm test
+```
+
+Para rodar apenas o teste de cadastro:
+
+```bash
+npm test -- tests/auth/register.spec.ts
+```
+
+Durante o desenvolvimento:
+
+```bash
+npm run test:watch
+```
+
+> O Docker precisa estar em execução. Não rode os testes dentro de `docker compose exec app sh`, porque o container da API não tem acesso ao Docker do host.
+
 ## Próximo passo
 
-O próximo passo é configurar uma suíte de testes automatizados de backend:
-
-- testes unitários para regras isoladas;
-- testes de integração com PostgreSQL separado do banco de desenvolvimento;
-- testes HTTP para cadastro e login;
-- execução dos testes no CI.
+Adicionar os cenários de login em `tests/auth/login.spec.ts`.
