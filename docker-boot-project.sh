@@ -67,4 +67,5 @@ log "Ambiente pronto"
 printf '%s\n' \
   "API:        http://localhost:${APP_PORT:-3000}" \
   "Auth:       http://localhost:${APP_PORT:-3000}/auth" \
-  "PostgreSQL:  localhost:${POSTGRES_PORT:-5432}"
+  "PostgreSQL:  localhost:${POSTGRES_PORT:-5432}" \
+  "Redis:       localhost:${REDIS_PORT:-6379}"

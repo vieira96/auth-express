@@ -21,6 +21,7 @@ O projeto foi estruturado para praticar fundamentos de backend que aparecem em a
 | API | Node.js, Express e TypeScript |
 | Banco de dados | PostgreSQL |
 | ORM e migrations | Prisma |
+| Rate limiting | Redis |
 | Validação | Zod |
 | Autenticação | bcryptjs e JSON Web Token |
 | Testes | Vitest, Supertest e Testcontainers |
@@ -98,6 +99,9 @@ POSTGRES_USER=app
 POSTGRES_PASSWORD=troque-esta-senha
 POSTGRES_DB=auth
 DATABASE_URL=postgresql://app:troque-esta-senha@localhost:5432/auth
+REDIS_PORT=6379
+REDIS_URL=redis://localhost:6379
+LOGIN_BLOCK_DURATION_MINUTES=5
 JWT_SECRET=troque-por-um-segredo-local-longo
 LOCAL_USER=app
 USER_ID=1000
@@ -266,7 +270,7 @@ Para rodar apenas um módulo:
 npm test -- tests/auth/register.spec.ts
 npm test -- tests/auth/login.spec.ts
 npm test -- tests/user/user.spec.ts
-npm test -- tests/auth/services/AuthService.login.spec.ts
+npm test -- tests/auth/services/auth/AuthService.login.spec.ts
 ```
 
 Durante o desenvolvimento:

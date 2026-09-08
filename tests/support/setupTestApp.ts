@@ -1,8 +1,10 @@
 import type { Express } from 'express';
 
 import type { PrismaClient } from '@/generated/prisma/client.js';
+import { disconnectRedis, getRedisClient } from '@/config/redis.js';
 
 import { startTestDatabase } from './testDatabase.js';
+import { startTestRedis } from './testRedis.js';
 
 type TestApp = {
   app: Express;
@@ -16,8 +18,9 @@ type CreateTestAppOptions = {
 };
 
 async function createTestApp({ jwtSecret }: CreateTestAppOptions = {}): Promise<TestApp> {
-  const database = await startTestDatabase();
+  const [database, redis] = await Promise.all([startTestDatabase(), startTestRedis()]);
   process.env.DATABASE_URL = database.databaseUrl;
+  process.env.REDIS_URL = redis.url;
 
   if (jwtSecret) {
     process.env.JWT_SECRET = jwtSecret;
@@ -32,10 +35,14 @@ async function createTestApp({ jwtSecret }: CreateTestAppOptions = {}): Promise<
     prisma,
     clearDatabase: async () => {
       await prisma.user.deleteMany();
+      const redisClient = await getRedisClient();
+      await redisClient.flushDb();
     },
     close: async () => {
       await prisma.$disconnect();
+      await disconnectRedis();
       await database.container.stop();
+      await redis.container.stop();
     },
   };
 }

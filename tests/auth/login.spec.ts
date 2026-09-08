@@ -73,6 +73,34 @@ describe('POST /auth/login', () => {
     });
   });
 
+  it('bloqueia a quarta tentativa de login com senha invalida', async () => {
+    const password = 'Senha123!';
+    const credentials = { email: 'ana@exemplo.com', password: 'SenhaErrada123!' };
+
+    await testApp.prisma.user.create({
+      data: {
+        email: credentials.email,
+        passwordHash: await bcrypt.hash(password, 12),
+      },
+    });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await request(testApp.app).post('/auth/login').send(credentials);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ error: 'E-mail e/ou senha invalidos.' });
+    }
+
+    const blockedResponse = await request(testApp.app).post('/auth/login').send(credentials);
+
+    expect(blockedResponse.status).toBe(429);
+    expect(blockedResponse.body).toEqual({
+      error: expect.stringMatching(
+        /^Muitas tentativas de login\. Tente novamente em \d+ minutos? e \d+ segundos?\.$/,
+      ),
+    });
+  });
+
   it('recusa um email invalido', async () => {
     const password = 'Senha123!';
     const email = 'email@exemplo.com';
