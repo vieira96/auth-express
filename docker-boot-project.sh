@@ -31,8 +31,31 @@ set -a
 . ./.env
 set +a
 
-log "Construindo e iniciando os containers de desenvolvimento"
-docker compose up -d --build
+USER_ID="${USER_ID:-1000}"
+GROUP_ID="${GROUP_ID:-1000}"
+
+if [[ -d node_modules && ! -O node_modules ]]; then
+  log "Corrigindo permissões de node_modules"
+  docker run --rm -v "$PROJECT_DIR/node_modules:/node_modules" alpine:3.21 \
+    chown -R "$USER_ID:$GROUP_ID" /node_modules
+fi
+
+if [[ -d src/generated/prisma && ! -O src/generated/prisma ]]; then
+  log "Corrigindo permissões do Prisma Client gerado"
+  docker run --rm -v "$PROJECT_DIR:/app" alpine:3.21 \
+    chown -R "$USER_ID:$GROUP_ID" /app/src/generated/prisma
+fi
+
+mkdir -p node_modules
+
+log "Instalando dependências Node.js"
+docker compose run --rm --no-deps --build app npm install
+
+log "Iniciando os containers de desenvolvimento"
+docker compose up -d
+
+log "Gerando o Prisma Client"
+docker compose exec -T app npm run prisma:generate
 
 log "Aplicando migrations pendentes do Prisma"
 docker compose exec -T app npx prisma migrate deploy

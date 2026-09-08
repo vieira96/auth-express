@@ -34,22 +34,51 @@ Pré-requisitos: Docker e Docker Compose v2.
 ./docker-boot-project.sh
 ```
 
-O script constrói os containers, inicia a API e o PostgreSQL e aplica as migrations pendentes do Prisma.
+O script constrói os containers, inicia a API e o PostgreSQL, gera o Prisma Client e aplica as migrations pendentes.
 
 A API fica disponível em `http://localhost:<APP_PORT>`. O valor padrão é `3000`; use a porta definida em `APP_PORT` no seu `.env`.
 
 Durante o desenvolvimento, alterações em `src/` reiniciam a API automaticamente.
 
-### Inicialização manual
+### Inicialização manual com Docker
 
 Se preferir executar cada etapa sem o script:
 
 ```bash
 cp .env.example .env
+mkdir -p node_modules
+docker compose run --rm --no-deps --build app npm install
+docker compose up -d
+docker compose exec -T app npm run prisma:generate
+docker compose exec -T app npx prisma migrate deploy
+```
+
+O container instala as dependências em `node_modules/` com o mesmo UID e GID do usuário local. Assim, a IDE encontra os tipos do projeto sem exigir uma instalação de Node na máquina.
+
+No Linux, confira seu UID e GID antes de editar o `.env`:
+
+```bash
+id -u
+id -g
+```
+
+### Sem Docker
+
+Para executar os comandos Node diretamente na máquina, use exatamente as versões usadas pela imagem Docker:
+
+```text
+Node.js 20.20.2
+npm 10.8.2
+```
+
+Com NVM:
+
+```bash
+nvm install 20.20.2
+nvm use 20.20.2
 npm install
 npm run prisma:generate
-docker compose up -d --build
-docker compose exec -T app npx prisma migrate deploy
+npm run dev
 ```
 
 Confira o status dos containers com:
@@ -70,7 +99,12 @@ POSTGRES_PASSWORD=troque-esta-senha
 POSTGRES_DB=auth
 DATABASE_URL=postgresql://app:troque-esta-senha@localhost:5432/auth
 JWT_SECRET=troque-por-um-segredo-local-longo
+LOCAL_USER=app
+USER_ID=1000
+GROUP_ID=1000
 ```
+
+Em Linux, substitua `USER_ID` e `GROUP_ID` pelos valores retornados por `id -u` e `id -g`. O Compose usa essas variáveis diretamente do `.env`; não é necessário executar `export`.
 
 > As variáveis `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` só são usadas na primeira criação do volume do PostgreSQL. Para alterá-las depois, recrie o volume ou faça a mudança diretamente no banco.
 
@@ -232,6 +266,7 @@ Para rodar apenas um módulo:
 npm test -- tests/auth/register.spec.ts
 npm test -- tests/auth/login.spec.ts
 npm test -- tests/user/user.spec.ts
+npm test -- tests/auth/services/AuthService.login.spec.ts
 ```
 
 Durante o desenvolvimento:
