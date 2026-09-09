@@ -23,11 +23,17 @@ const authenticate: RequestHandler = (request, _response, next) => {
   }
 
   try {
-    jwt.verify(token, secret);
+    const payload = jwt.verify(token, secret);
+
+    if (typeof payload === 'string' || typeof payload.sub !== 'string') {
+      return next(new AppError(401, 'Token de autenticacao invalido.'));
+    }
+
+    request.authenticatedUserId = payload.sub;
     next();
   } catch {
     next(new AppError(401, 'Token de autenticacao invalido.'));
-  }
+}
 };
 
 export { authenticate };

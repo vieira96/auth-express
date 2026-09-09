@@ -60,6 +60,42 @@ describe('POST /auth/login', () => {
     });
   });
 
+  it('permite que um admin autenticado acesse a listagem de usuarios', async () => {
+    const credentials = {
+      // Conta exclusiva deste cenário de autorização.
+      email: 'admin@admin.com',
+      password: 'Senha123!',
+    };
+    const admin = await testApp.prisma.user.create({
+      data: {
+        email: credentials.email,
+        passwordHash: await bcrypt.hash(credentials.password, 12),
+        roles: {
+          create: {
+            role: {
+              connect: { name: 'admin' },
+            },
+          },
+        },
+      },
+    });
+
+    const loginResponse = await request(testApp.app).post('/auth/login').send(credentials);
+
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body.user).toEqual({
+      id: admin.id,
+      email: admin.email,
+      roles: [{ name: 'admin' }],
+    });
+
+    const usersResponse = await request(testApp.app)
+      .get('/users')
+      .set('Authorization', `Bearer ${loginResponse.body.token}`);
+
+    expect(usersResponse.status).toBe(200);
+  });
+
   it('recusa uma senha invalida', async () => {
     const password = 'Senha123!';
     const wrongPassword = 'SenhaErrada123!';

@@ -38,11 +38,14 @@ describe('GET /users', () => {
     const userRole = await testApp.prisma.role.findUniqueOrThrow({
       where: { name: 'user' },
     });
-    await testApp.prisma.userRole.create({
-      data: {
-        userId: authenticatedUser.id,
-        roleId: userRole.id,
-      },
+    const adminRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'admin' },
+    });
+    await testApp.prisma.userRole.createMany({
+      data: [
+        { userId: authenticatedUser.id, roleId: userRole.id },
+        { userId: authenticatedUser.id, roleId: adminRole.id },
+      ],
     });
 
     const token = jwt.sign(
@@ -78,7 +81,10 @@ describe('GET /users', () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: authenticatedUser.id,
-          roles: [{ name: userRole.name }],
+          roles: expect.arrayContaining([
+            { name: userRole.name },
+            { name: adminRole.name },
+          ]),
         }),
       ]),
     );
@@ -102,6 +108,15 @@ describe('GET /users', () => {
       { sub: createdUsers[0].id, email: createdUsers[0].email },
       jwtSecret,
     );
+    const adminRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'admin' },
+    });
+    await testApp.prisma.userRole.create({
+      data: {
+        userId: createdUsers[0].id,
+        roleId: adminRole.id,
+      },
+    });
 
     const firstPage = await request(testApp.app)
       .get('/users?page=1&perPage=2')
@@ -122,6 +137,34 @@ describe('GET /users', () => {
 
     expect(new Set(returnedIds)).toHaveLength(4);
     expect(returnedIds).toEqual(expect.arrayContaining(createdUsers.map((user) => user.id)));
+  });
+
+  it('recusa a listagem para um usuario sem a role admin', async () => {
+    const user = await testApp.prisma.user.create({
+      data: {
+        email: 'usuario@exemplo.com',
+        passwordHash: 'password-hash',
+      },
+    });
+    const userRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'user' },
+    });
+    await testApp.prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: userRole.id,
+      },
+    });
+    const token = jwt.sign({ sub: user.id, email: user.email }, jwtSecret);
+
+    const response = await request(testApp.app)
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      error: 'Forbidden',
+    });
   });
 
   it('recusa a listagem sem token', async () => {
