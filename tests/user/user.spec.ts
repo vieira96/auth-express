@@ -3,7 +3,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTestApp, type TestApp } from '../support/setupTestApp.js';
-import { UserType } from '@/types/user/UserType.js';
+import type { UserType } from '@/types/user/UserType.js';
 
 const jwtSecret = 'test-secret-for-user-routes';
 
@@ -57,10 +57,54 @@ describe('GET /users', () => {
           }),
         ),
       ),
+      pagination: {
+        page: 1,
+        perPage: 10,
+        total: createdUsers.length,
+        totalPages: 1,
+      },
     });
+    expect(response.body.users).toHaveLength(createdUsers.length);
     response.body.users.forEach((user: Record<string, unknown>) => {
       expect(user).not.toHaveProperty('passwordHash');
     });
+  });
+
+  it('retorna paginas sem repetir usuarios', async () => {
+    const createdUsers: UserType[] = await Promise.all(
+      ['user1', 'user2', 'user3', 'user4'].map((name) =>
+        testApp.prisma.user.create({
+          data: {
+            email: `${name}@exemplo.com`,
+            passwordHash: 'password-hash',
+          },
+        }),
+      ),
+    );
+    const token = jwt.sign(
+      { sub: createdUsers[0].id, email: createdUsers[0].email },
+      jwtSecret,
+    );
+
+    const firstPage = await request(testApp.app)
+      .get('/users?page=1&perPage=2')
+      .set('Authorization', `Bearer ${token}`);
+    const secondPage = await request(testApp.app)
+      .get('/users?page=2&perPage=2')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(firstPage.status).toBe(200);
+    expect(secondPage.status).toBe(200);
+    expect(firstPage.body.pagination).toEqual({ page: 1, perPage: 2, total: 4, totalPages: 2 });
+    expect(secondPage.body.pagination).toEqual({ page: 2, perPage: 2, total: 4, totalPages: 2 });
+
+    const returnedIds = [
+      ...firstPage.body.users.map((user: { id: string }) => user.id),
+      ...secondPage.body.users.map((user: { id: string }) => user.id),
+    ];
+
+    expect(new Set(returnedIds)).toHaveLength(4);
+    expect(returnedIds).toEqual(expect.arrayContaining(createdUsers.map((user) => user.id)));
   });
 
   it('recusa a listagem sem token', async () => {
