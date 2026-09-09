@@ -23,6 +23,22 @@
       "value": ""
     },
     {
+      "key": "loginAdminUrl",
+      "value": "{{baseUrl}}/auth/login"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@admin.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Senha123!"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
       "key": "usersPage",
       "value": "1"
     },
@@ -71,7 +87,7 @@
           ]
         },
         {
-          "name": "Login",
+          "name": "Login usuario comum",
           "request": {
             "method": "POST",
             "header": [
@@ -108,6 +124,45 @@
               }
             }
           ]
+        },
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{loginAdminUrl}}",
+            "description": "Autentica a conta admin demonstrativa e atualiza adminAccessToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 200 OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body.token) {",
+                  "  pm.collectionVariables.set('adminAccessToken', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -115,17 +170,17 @@
       "name": "Users",
       "item": [
         {
-          "name": "Listar usuarios",
+          "name": "Listar usuarios (admin)",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": "{{baseUrl}}/users?page={{usersPage}}&perPage={{usersPerPage}}",
-            "description": "Lista usuarios autenticados com paginacao. Execute Login antes para preencher accessToken."
+            "description": "Lista usuarios com paginacao. Execute Login admin antes para preencher adminAccessToken."
           },
           "event": [
             {
@@ -145,6 +200,32 @@
                   "  body.users.forEach(function (user) {",
                   "    pm.expect(user).not.to.have.property('passwordHash');",
                   "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios (usuario comum)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users?page={{usersPage}}&perPage={{usersPerPage}}",
+            "description": "Valida que um usuario sem role admin nao pode listar usuarios. Execute Login usuario comum antes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 403 Forbidden', function () {",
+                  "  pm.response.to.have.status(403);",
                   "});"
                 ]
               }
