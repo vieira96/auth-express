@@ -44,7 +44,17 @@ describe('AuthService.register', () => {
     expect(mocks.findUnique).toHaveBeenCalledWith({ where: { email: credentials.email } });
     expect(mocks.hash).toHaveBeenCalledWith(credentials.password, 12);
     expect(mocks.create).toHaveBeenCalledWith({
-      data: { email: credentials.email, passwordHash },
+      data: {
+        email: credentials.email,
+        passwordHash,
+        roles: {
+          create: {
+            role: {
+              connect: { name: 'user' },
+            },
+          },
+        },
+      },
     });
   });
 

@@ -30,6 +30,15 @@ describe('POST /auth/login', () => {
         passwordHash: await bcrypt.hash(password, 12),
       },
     });
+    const userRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'user' },
+    });
+    await testApp.prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: userRole.id,
+      },
+    });
 
     const response = await request(testApp.app).post('/auth/login').send({
       email: user.email,
@@ -42,6 +51,7 @@ describe('POST /auth/login', () => {
       user: {
         id: user.id,
         email: user.email,
+        roles: [{ name: userRole.name }],
       },
     });
     expect(jwt.verify(response.body.token, jwtSecret)).toMatchObject({

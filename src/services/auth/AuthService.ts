@@ -7,12 +7,14 @@ import { prisma } from '@/config/prisma.js';
 import { AppError } from '@/errors/AppError.js';
 import { LoginAttemptService } from '@/services/auth/LoginAttemptService.js';
 import type {
+  AuthenticatedUser,
   AuthCredentials,
   AuthResponse,
   RegisterResponse,
 } from '@/types/auth/AuthTypes.js';
 
-import { UserType } from '@/types/user/UserType.js';
+import type { RoleType } from '@/types/role/RoleType.js';
+import type { UserType } from '@/types/user/UserType.js';
   
 class AuthService {
   private readonly loginAttemptService = new LoginAttemptService();
@@ -28,7 +30,17 @@ class AuthService {
 
     const passwordHash = await bcrypt.hash(payload.password, 12);
     const user = await prisma.user.create({
-      data: { email: payload.email, passwordHash },
+      data: {
+        email: payload.email,
+        passwordHash,
+        roles: {
+          create: {
+            role: {
+              connect: { name: 'user' },
+            },
+          },
+        },
+      },
     });
 
     return { user: this.toAuthUser(user) };
@@ -39,7 +51,23 @@ class AuthService {
 
     await this.loginAttemptService.ensureAllowed(ip);
 
-    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: payload.email },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        roles: {
+          select: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
     if (!user || !(await bcrypt.compare(payload.password, user.passwordHash))) {
       await this.loginAttemptService.registerFailure(ip);
@@ -51,7 +79,7 @@ class AuthService {
     return this.createAuthResponse(user);
   }
 
-  private createAuthResponse(user: { id: string; email: string }): AuthResponse {
+  private createAuthResponse(user: { id: string; email: string; roles: { role: RoleType }[] }): AuthResponse {
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
@@ -64,12 +92,19 @@ class AuthService {
 
     return {
       token,
-      user: this.toAuthUser(user),
+      user: this.toAuthenticatedUser(user),
     };
   }
 
   private toAuthUser(user: UserType) {
     return { id: user.id, email: user.email };
+  }
+
+  private toAuthenticatedUser(user: { id: string; email: string; roles: { role: RoleType }[] }): AuthenticatedUser {
+    return {
+      ...this.toAuthUser(user),
+      roles: user.roles.map(({ role }) => role),
+    };
   }
 }
 

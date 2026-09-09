@@ -54,6 +54,7 @@ describe('AuthService.login', () => {
       passwordHash: 'senha-com-hash',
       createdAt: new Date('2026-09-07T10:00:00.000Z'),
       updatedAt: new Date('2026-09-07T10:00:00.000Z'),
+      roles: [{ role: { name: 'user' } }],
     };
 
     mocks.findUnique.mockResolvedValue(user);
@@ -64,9 +65,19 @@ describe('AuthService.login', () => {
 
     expect(result).toEqual({
       token: 'jwt-de-teste',
-      user: { id: user.id, email: user.email },
+      user: {
+        id: user.id,
+        email: user.email,
+        roles: [{ name: 'user' }],
+      },
     });
     expect(mocks.compare).toHaveBeenCalledWith(credentials.password, user.passwordHash);
+    expect(mocks.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { email: credentials.email },
+        select: expect.objectContaining({ roles: expect.any(Object) }),
+      }),
+    );
     expect(mocks.sign).toHaveBeenCalledWith(
       { sub: user.id, email: user.email },
       jwtSecret,
@@ -79,6 +90,7 @@ describe('AuthService.login', () => {
       id: 'user-1',
       email: 'ana@exemplo.com',
       passwordHash: 'senha-com-hash',
+      roles: [],
     });
     mocks.compare.mockResolvedValue(false);
 
@@ -101,6 +113,7 @@ describe('AuthService.login', () => {
       id: 'user-1',
       email: credentials.email,
       passwordHash: 'senha-com-hash',
+      roles: [],
     });
     mocks.compare.mockResolvedValue(false);
     mocks.ensureAllowed.mockImplementation(async () => {

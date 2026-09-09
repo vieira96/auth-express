@@ -21,6 +21,14 @@
     {
       "key": "accessToken",
       "value": ""
+    },
+    {
+      "key": "usersPage",
+      "value": "1"
+    },
+    {
+      "key": "usersPerPage",
+      "value": "10"
     }
   ],
   "item": [
@@ -116,8 +124,8 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/users",
-            "description": "Lista usuarios autenticados. Execute Login antes para preencher accessToken."
+            "url": "{{baseUrl}}/users?page={{usersPage}}&perPage={{usersPerPage}}",
+            "description": "Lista usuarios autenticados com paginacao. Execute Login antes para preencher accessToken."
           },
           "event": [
             {
@@ -130,6 +138,10 @@
                   "pm.test('Nao retorna hash de senha', function () {",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.users).to.be.an('array');",
+                  "  pm.expect(body.pagination).to.have.property('page');",
+                  "  pm.expect(body.pagination).to.have.property('perPage');",
+                  "  pm.expect(body.pagination).to.have.property('total');",
+                  "  pm.expect(body.pagination).to.have.property('totalPages');",
                   "  body.users.forEach(function (user) {",
                   "    pm.expect(user).not.to.have.property('passwordHash');",
                   "  });",

@@ -1,3 +1,6 @@
+import type { PaginationMetadata } from '@/types/global/PaginationType.js';
+import type { RoleType } from '@/types/role/RoleType.js';
+
 export type UserType = {
   id: string;
   email: string;
@@ -6,17 +9,10 @@ export type UserType = {
 export type UserListItem = UserType & {
   createdAt: Date;
   updatedAt: Date;
-};
-
-export type UserListPagination = {
-  page: number;
-  perPage: number;
+  roles: RoleType[];
 };
 
 export type UserListResponse = {
   users: UserListItem[];
-  pagination: UserListPagination & {
-    total: number;
-    totalPages: number;
-  };
+  pagination: PaginationMetadata;
 };

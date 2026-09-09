@@ -1,11 +1,11 @@
 import { prisma } from '@/config/prisma.js';
+import type { Pagination } from '@/types/global/PaginationType.js';
 import type {
-  UserListPagination,
   UserListResponse,
 } from '@/types/user/UserType.js';
 
 class UserService {
-  async list({ page, perPage }: UserListPagination): Promise<UserListResponse> {
+  async list({ page, perPage }: Pagination): Promise<UserListResponse> {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         skip: (page - 1) * perPage,
@@ -15,6 +15,15 @@ class UserService {
           email: true,
           createdAt: true,
           updatedAt: true,
+          roles: {
+            select: {
+              role: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: [
           { createdAt: 'desc' },
@@ -24,8 +33,13 @@ class UserService {
       prisma.user.count(),
     ]);
 
+    const formattedUsersResponse = users.map(({ roles: roleAssignments, ...user }) => ({
+      ...user,
+      roles: roleAssignments.map(({ role }) => role),
+    }));
+
     return {
-      users,
+      users: formattedUsersResponse,
       pagination: {
         page,
         perPage,

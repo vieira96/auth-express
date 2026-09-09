@@ -35,7 +35,16 @@ describe('GET /users', () => {
     );
 
     const authenticatedUser = createdUsers[0];
-    
+    const userRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'user' },
+    });
+    await testApp.prisma.userRole.create({
+      data: {
+        userId: authenticatedUser.id,
+        roleId: userRole.id,
+      },
+    });
+
     const token = jwt.sign(
       { sub: authenticatedUser.id, email: authenticatedUser.email },
       jwtSecret,
@@ -65,6 +74,14 @@ describe('GET /users', () => {
       },
     });
     expect(response.body.users).toHaveLength(createdUsers.length);
+    expect(response.body.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: authenticatedUser.id,
+          roles: [{ name: userRole.name }],
+        }),
+      ]),
+    );
     response.body.users.forEach((user: Record<string, unknown>) => {
       expect(user).not.toHaveProperty('passwordHash');
     });

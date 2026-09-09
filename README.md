@@ -280,7 +280,3 @@ npm run test:watch
 ```
 
 > O Docker precisa estar em execução. Não rode os testes dentro de `docker compose exec app sh`, porque o container da API não tem acesso ao Docker do host.
-
-## Próximo passo
-
-Adicionar paginação à listagem de usuários e cobrir esse comportamento com testes.

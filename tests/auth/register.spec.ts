@@ -43,6 +43,20 @@ describe('POST /auth/register', () => {
     expect(user).not.toBeNull();
     expect(user?.passwordHash).not.toBe(payload.password);
     await expect(bcrypt.compare(payload.password, user!.passwordHash)).resolves.toBe(true);
+
+    const defaultRole = await testApp.prisma.role.findUniqueOrThrow({
+      where: { name: 'user' },
+    });
+    const userRole = await testApp.prisma.userRole.findUnique({
+      where: {
+        userId_roleId: {
+          userId: user!.id,
+          roleId: defaultRole.id,
+        },
+      },
+    });
+
+    expect(userRole).not.toBeNull();
   });
 
   it('recusa cadastro com e-mail ja existente', async () => {
