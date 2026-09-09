@@ -23,6 +23,10 @@ describe('GET /users', () => {
   });
 
   it('lista usuarios quando recebe um token valido', async () => {
+    const existingUsersCount = await testApp.prisma.user.count();
+    const page = 1;
+    const perPage = 10;
+
     const users = [
       { email: 'user1@exemplo.com', passwordHash: 'password-hash' },
       { email: 'user2@exemplo.com', passwordHash: 'password-hash' },
@@ -33,6 +37,7 @@ describe('GET /users', () => {
     const createdUsers: UserType[] = await Promise.all(
       users.map((user) => testApp.prisma.user.create({ data: user })),
     );
+    const expectedTotal = existingUsersCount + createdUsers.length;
 
     const authenticatedUser = createdUsers[0];
     const userRole = await testApp.prisma.role.findUniqueOrThrow({
@@ -70,13 +75,13 @@ describe('GET /users', () => {
         ),
       ),
       pagination: {
-        page: 1,
-        perPage: 10,
-        total: createdUsers.length,
-        totalPages: 1,
+        page,
+        perPage,
+        total: expectedTotal,
+        totalPages: Math.ceil(expectedTotal / perPage),
       },
     });
-    expect(response.body.users).toHaveLength(createdUsers.length);
+    expect(response.body.users).toHaveLength(expectedTotal);
     expect(response.body.users).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
